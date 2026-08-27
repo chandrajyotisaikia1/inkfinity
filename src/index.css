@@ -1,77 +1,53 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
 
-@layer base {
-  html {
-    scroll-behavior: smooth;
-  }
-  body {
-    @apply bg-ink-black text-ink-100 font-sans antialiased;
-  }
-  ::selection {
-    @apply bg-gold/30 text-white;
-  }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-@layer components {
-  .gold-text {
-    @apply text-gold;
-  }
-  .gold-border {
-    @apply border border-gold/30;
-  }
-  .panel {
-    @apply bg-ink-850 border border-white/5 rounded-2xl;
-  }
-  .btn-gold {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gold px-7 py-3.5 text-ink-black font-semibold tracking-wide transition-all duration-300 hover:bg-gold-300 hover:shadow-[0_0_30px_-4px_rgba(212,175,55,0.5)] active:scale-[0.98];
-  }
-  .btn-outline-gold {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-gold/40 px-7 py-3.5 text-gold font-medium tracking-wide transition-all duration-300 hover:bg-gold/10 hover:border-gold active:scale-[0.98];
-  }
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-ink-100 transition-colors duration-200 hover:text-gold;
-  }
-  .section-eyebrow {
-    @apply text-gold text-xs font-semibold uppercase tracking-ultra;
-  }
-  .input-dark {
-    @apply w-full rounded-xl bg-ink-900 border border-white/10 px-4 py-3 text-white placeholder-ink-300 outline-none transition-colors duration-200 focus:border-gold/50 focus:ring-1 focus:ring-gold/30;
-  }
+body {
+  @apply bg-ink-black text-ink-100 font-sans;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+html {
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D4AF37;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #c19c2a;
+}
+
+/* Input Focus States */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+}
+
+/* Animation Utilities */
+@keyframes shimmer-gold {
+  0% {
+    background-position: -200% 0;
   }
-  .gold-gradient-text {
-    @apply bg-gradient-to-r from-gold-200 via-gold-400 to-gold-600 bg-clip-text text-transparent;
-  }
-  .gold-shimmer {
-    background: linear-gradient(
-      90deg,
-      #D4AF37 0%,
-      #f5ecc0 25%,
-      #D4AF37 50%,
-      #f5ecc0 75%,
-      #D4AF37 100%
-    );
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: shimmer 3s linear infinite;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .bg-grain {
-    background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.015) 1px, transparent 0);
-    background-size: 4px 4px;
+  100% {
+    background-position: 200% 0;
   }
 }
