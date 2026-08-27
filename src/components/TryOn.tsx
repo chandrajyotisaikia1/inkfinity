@@ -1,232 +1,326 @@
-import { useRef, useState } from 'react';
-import { useReveal } from '@/hooks/useReveal';
-import { Upload, X, Sparkles, RotateCcw, Image as ImageIcon } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Upload, Maximize2, Eye, EyeOff } from 'lucide-react';
 
-export default function TryOn() {
-  const { ref, visible } = useReveal<HTMLDivElement>();
-  const skinRef = useRef<HTMLInputElement>(null);
-  const designRef = useRef<HTMLInputElement>(null);
+interface TryOnState {
+  skinImageUrl: string | null;
+  tattooImageUrl: string | null;
+  offsetX: number;
+  offsetY: number;
+  scale: number;
+  showOverlay: boolean;
+}
 
-  const [skinImg, setSkinImg] = useState<string | null>(null);
-  const [designImg, setDesignImg] = useState<string | null>(null);
-  const [opacity, setOpacity] = useState(75);
-  const [scale, setScale] = useState(100);
-  const [pos, setPos] = useState({ x: 50, y: 50 });
-  const [dragging, setDragging] = useState(false);
+export const TryOn: React.FC = () => {
+  const skinInputRef = useRef<HTMLInputElement>(null);
+  const tattooInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = (file: File | undefined, setter: (url: string) => void) => {
+  const [state, setState] = useState<TryOnState>({
+    skinImageUrl: null,
+    tattooImageUrl: null,
+    offsetX: 0,
+    offsetY: 0,
+    scale: 1,
+    showOverlay: true,
+  });
+
+  const handleImageUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    type: 'skin' | 'tattoo'
+  ) => {
+    const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) return;
+
     const reader = new FileReader();
-    reader.onload = (e) => setter(e.target?.result as string);
+    reader.onload = (e) => {
+      const imageUrl = e.target?.result as string;
+      setState((prev) => ({
+        ...prev,
+        [type === 'skin' ? 'skinImageUrl' : 'tattooImageUrl']: imageUrl,
+      }));
+    };
     reader.readAsDataURL(file);
   };
 
-  const reset = () => {
-    setSkinImg(null);
-    setDesignImg(null);
-    setOpacity(75);
-    setScale(100);
-    setPos({ x: 50, y: 50 });
+  const handleOffsetChange = (axis: 'X' | 'Y', value: number) => {
+    setState((prev) => ({
+      ...prev,
+      [axis === 'X' ? 'offsetX' : 'offsetY']: value,
+    }));
   };
 
-  const handleDrag = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!dragging || !designImg) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setPos({ x: Math.max(5, Math.min(95, x)), y: Math.max(5, Math.min(95, y)) });
+  const handleScaleChange = (value: number) => {
+    setState((prev) => ({
+      ...prev,
+      scale: Math.max(0.5, Math.min(3, value)),
+    }));
+  };
+
+  const resetSettings = () => {
+    setState((prev) => ({
+      ...prev,
+      offsetX: 0,
+      offsetY: 0,
+      scale: 1,
+    }));
+  };
+
+  const downloadComposite = () => {
+    const canvas = document.getElementById(
+      'try-on-canvas'
+    ) as HTMLCanvasElement;
+    if (!canvas) return;
+
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = 'tattoo-preview.png';
+    link.click();
   };
 
   return (
-    <section id="tryon" className="relative bg-ink-black py-24 lg:py-32">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div
-          ref={ref}
-          className={`transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
-        >
-          <div className="text-center">
-            <span className="section-eyebrow">Smart Preview</span>
-            <h2 className="mt-4 font-serif text-4xl font-semibold text-white sm:text-5xl">
-              Tattoo <span className="gold-text italic">Try-On</span>
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-ink-100">
-              Upload a photo of your skin and a design. Our CSS blend engine composites the
-              ink onto your skin in real time — no AI, no upload to any server.
-            </p>
-          </div>
+    <div className="min-h-screen bg-ink-black py-12 px-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-12">
+          <h1 className="text-5xl font-serif font-bold text-gold mb-3 tracking-widest">
+            TRY-ON VISUALIZER
+          </h1>
+          <p className="text-ink-200 text-lg">
+            Upload your skin and tattoo design to see how it looks
+          </p>
+        </div>
 
-          <div className="mt-14 grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Upload panel */}
-            <div className="panel p-6">
-              <h3 className="mb-4 flex items-center gap-2 font-serif text-lg font-semibold text-white">
-                <Sparkles size={18} className="text-gold" /> Upload Your Assets
-              </h3>
-
-              {/* Skin upload */}
-              <label className="group block cursor-pointer">
-                <div
-                  className={`relative flex h-40 items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
-                    skinImg ? 'border-gold/30' : 'border-white/10 hover:border-gold/40'
-                  }`}
-                >
-                  {skinImg ? (
-                    <>
-                      <img src={skinImg} alt="Skin" className="h-full w-full rounded-xl object-cover" />
-                      <button
-                        onClick={(e) => { e.preventDefault(); setSkinImg(null); }}
-                        className="absolute top-2 right-2 rounded-full bg-ink-black/80 p-1.5 text-white hover:bg-danger"
-                      >
-                        <X size={14} />
-                      </button>
-                    </>
-                  ) : (
-                    <div className="text-center">
-                      <Upload size={24} className="mx-auto text-gold/50" />
-                      <p className="mt-2 text-sm text-ink-100">Upload photo of your skin</p>
-                      <p className="text-xs text-ink-300">JPG or PNG</p>
-                    </div>
-                  )}
-                </div>
-                <input
-                  ref={skinRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFile(e.target.files?.[0], setSkinImg)}
+        {/* Upload Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+          {/* Skin Upload */}
+          <div className="flex flex-col">
+            <label className="block text-gold font-semibold mb-4 uppercase text-sm tracking-wider">
+              Step 1: Your Skin
+            </label>
+            <button
+              onClick={() => skinInputRef.current?.click()}
+              className="relative group overflow-hidden rounded-lg border-2 border-gold bg-ink-850 hover:bg-ink-800 transition-all h-48 flex items-center justify-center"
+            >
+              {state.skinImageUrl ? (
+                <img
+                  src={state.skinImageUrl}
+                  alt="Skin"
+                  className="w-full h-full object-cover"
                 />
-              </label>
-
-              {/* Design upload */}
-              <label className="group mt-4 block cursor-pointer">
-                <div
-                  className={`relative flex h-40 items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
-                    designImg ? 'border-gold/30' : 'border-white/10 hover:border-gold/40'
-                  }`}
-                >
-                  {designImg ? (
-                    <>
-                      <img src={designImg} alt="Design" className="h-full w-full rounded-xl object-contain" />
-                      <button
-                        onClick={(e) => { e.preventDefault(); setDesignImg(null); }}
-                        className="absolute top-2 right-2 rounded-full bg-ink-black/80 p-1.5 text-white hover:bg-danger"
-                      >
-                        <X size={14} />
-                      </button>
-                    </>
-                  ) : (
-                    <div className="text-center">
-                      <ImageIcon size={24} className="mx-auto text-gold/50" />
-                      <p className="mt-2 text-sm text-ink-100">Upload tattoo design</p>
-                      <p className="text-xs text-ink-300">Transparent PNG works best</p>
-                    </div>
-                  )}
-                </div>
-                <input
-                  ref={designRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFile(e.target.files?.[0], setDesignImg)}
-                />
-              </label>
-
-              {/* Controls */}
-              {designImg && (
-                <div className="mt-6 space-y-4 border-t border-white/5 pt-5">
-                  <div>
-                    <label className="mb-1.5 flex items-center justify-between text-xs uppercase tracking-wider text-ink-200">
-                      <span>Opacity</span>
-                      <span className="text-gold">{opacity}%</span>
-                    </label>
-                    <input
-                      type="range"
-                      min={20}
-                      max={100}
-                      value={opacity}
-                      onChange={(e) => setOpacity(Number(e.target.value))}
-                      className="w-full accent-gold"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 flex items-center justify-between text-xs uppercase tracking-wider text-ink-200">
-                      <span>Scale</span>
-                      <span className="text-gold">{scale}%</span>
-                    </label>
-                    <input
-                      type="range"
-                      min={30}
-                      max={200}
-                      value={scale}
-                      onChange={(e) => setScale(Number(e.target.value))}
-                      className="w-full accent-gold"
-                    />
-                  </div>
-                  <p className="text-xs text-ink-300">
-                    Tip: Drag the design on the preview to reposition it.
-                  </p>
-                  <button onClick={reset} className="btn-ghost w-full border border-white/10 hover:border-gold/30">
-                    <RotateCcw size={14} /> Reset All
-                  </button>
+              ) : (
+                <div className="flex flex-col items-center gap-3">
+                  <Upload className="w-8 h-8 text-gold" />
+                  <span className="text-gold text-sm">Click to upload skin tone</span>
                 </div>
               )}
+            </button>
+            <input
+              ref={skinInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => handleImageUpload(e, 'skin')}
+            />
+          </div>
+
+          {/* Tattoo Upload */}
+          <div className="flex flex-col">
+            <label className="block text-gold font-semibold mb-4 uppercase text-sm tracking-wider">
+              Step 2: Your Tattoo Design
+            </label>
+            <button
+              onClick={() => tattooInputRef.current?.click()}
+              className="relative group overflow-hidden rounded-lg border-2 border-gold bg-ink-850 hover:bg-ink-800 transition-all h-48 flex items-center justify-center"
+            >
+              {state.tattooImageUrl ? (
+                <img
+                  src={state.tattooImageUrl}
+                  alt="Tattoo"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-3">
+                  <Upload className="w-8 h-8 text-gold" />
+                  <span className="text-gold text-sm">Click to upload design</span>
+                </div>
+              )}
+            </button>
+            <input
+              ref={tattooInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => handleImageUpload(e, 'tattoo')}
+            />
+          </div>
+        </div>
+
+        {/* Preview Section */}
+        {state.skinImageUrl && state.tattooImageUrl && (
+          <div className="mb-12">
+            <label className="block text-gold font-semibold mb-4 uppercase text-sm tracking-wider">
+              Step 3: Live Preview
+            </label>
+
+            <div className="bg-ink-850 border-2 border-gold rounded-lg p-8 mb-8">
+              {/* Canvas Container */}
+              <div className="relative bg-ink-black rounded overflow-hidden max-w-2xl mx-auto aspect-video flex items-center justify-center">
+                {/* Base Skin Image */}
+                <img
+                  src={state.skinImageUrl}
+                  alt="Skin base"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+
+                {/* Tattoo Overlay with Blend Mode & Filters */}
+                {state.showOverlay && (
+                  <img
+                    src={state.tattooImageUrl}
+                    alt="Tattoo overlay"
+                    className="absolute object-cover"
+                    style={{
+                      width: `${100 * state.scale}%`,
+                      height: `auto`,
+                      left: `${50 - (50 * state.scale) + state.offsetX}%`,
+                      top: `${50 - (50 * state.scale) + state.offsetY}%`,
+                      transform: 'translate(-50%, -50%)',
+                      mixBlendMode: 'multiply',
+                      filter: 'contrast(125%) saturate(125%)',
+                    }}
+                  />
+                )}
+
+                {/* Canvas for download */}
+                <canvas
+                  id="try-on-canvas"
+                  className="hidden"
+                  width={800}
+                  height={600}
+                />
+              </div>
+
+              {/* Toggle Overlay Visibility */}
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={() =>
+                    setState((prev) => ({ ...prev, showOverlay: !prev.showOverlay }))
+                  }
+                  className="flex items-center gap-2 px-4 py-2 bg-gold text-ink-black font-semibold rounded hover:bg-gold-500 transition-all"
+                >
+                  {state.showOverlay ? (
+                    <>
+                      <Eye className="w-4 h-4" /> Hide Tattoo
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="w-4 h-4" /> Show Tattoo
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* Preview canvas */}
-            <div className="panel flex flex-col p-6">
-              <h3 className="mb-4 font-serif text-lg font-semibold text-white">Live Preview</h3>
-              <div
-                className="relative flex-1 items-center justify-center overflow-hidden rounded-xl bg-ink-900"
-                onMouseMove={handleDrag}
-                onMouseUp={() => setDragging(false)}
-                onMouseLeave={() => setDragging(false)}
-              >
-                {skinImg ? (
-                  <div className="relative h-full min-h-[400px] w-full">
-                    <img src={skinImg} alt="Skin preview" className="h-full w-full object-cover" />
-                    {designImg && (
-                      <img
-                        src={designImg}
-                        alt="Tattoo overlay"
-                        draggable={false}
-                        onMouseDown={() => setDragging(true)}
-                        className="absolute select-none"
-                        style={{
-                          left: `${pos.x}%`,
-                          top: `${pos.y}%`,
-                          width: `${scale}%`,
-                          opacity: opacity / 100,
-                          transform: 'translate(-50%, -50%)',
-                          mixBlendMode: 'multiply',
-                          filter: 'contrast(110%)',
-                          cursor: dragging ? 'grabbing' : 'grab',
-                        }}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex h-full min-h-[400px] flex-col items-center justify-center text-center">
-                    <Sparkles size={32} className="text-gold/20" />
-                    <p className="mt-3 text-sm text-ink-200">
-                      Upload a skin photo to begin
-                    </p>
-                  </div>
-                )}
+            {/* Controls Section */}
+            <div className="bg-ink-850 border-2 border-gold rounded-lg p-8">
+              <h3 className="text-gold font-semibold mb-6 uppercase text-sm tracking-wider">
+                Adjust Placement
+              </h3>
 
-                {skinImg && !designImg && (
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-ink-black/80 px-4 py-2 text-xs text-ink-100 backdrop-blur-sm">
-                    Now upload a design to see the blend
-                  </div>
-                )}
+              {/* Scale Control */}
+              <div className="mb-6">
+                <label className="text-ink-200 text-sm font-medium mb-2 block">
+                  Scale: {state.scale.toFixed(2)}x
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="3"
+                  step="0.1"
+                  value={state.scale}
+                  onChange={(e) => handleScaleChange(parseFloat(e.target.value))}
+                  className="w-full accent-gold"
+                />
               </div>
-              <div className="mt-3 flex items-center gap-2 text-xs text-ink-300">
-                <span className="h-2 w-2 rounded-full bg-success" />
-                Blending with mix-blend-mode: multiply + contrast(110%)
+
+              {/* X Offset Control */}
+              <div className="mb-6">
+                <label className="text-ink-200 text-sm font-medium mb-2 block">
+                  Horizontal Position: {state.offsetX.toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="-100"
+                  max="100"
+                  step="5"
+                  value={state.offsetX}
+                  onChange={(e) =>
+                    handleOffsetChange('X', parseFloat(e.target.value))
+                  }
+                  className="w-full accent-gold"
+                />
+              </div>
+
+              {/* Y Offset Control */}
+              <div className="mb-8">
+                <label className="text-ink-200 text-sm font-medium mb-2 block">
+                  Vertical Position: {state.offsetY.toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="-100"
+                  max="100"
+                  step="5"
+                  value={state.offsetY}
+                  onChange={(e) =>
+                    handleOffsetChange('Y', parseFloat(e.target.value))
+                  }
+                  className="w-full accent-gold"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4">
+                <button
+                  onClick={resetSettings}
+                  className="flex-1 px-6 py-3 bg-ink-700 text-gold border border-gold rounded font-semibold hover:bg-ink-600 transition-all"
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={downloadComposite}
+                  className="flex-1 px-6 py-3 bg-gold text-ink-black rounded font-semibold hover:bg-gold-500 transition-all flex items-center justify-center gap-2"
+                >
+                  <Maximize2 className="w-4 h-4" /> Download Preview
+                </button>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Info Section */}
+        <div className="bg-ink-850 border-2 border-gold rounded-lg p-8">
+          <h3 className="text-gold font-semibold mb-4 uppercase text-sm tracking-wider">
+            How to Use
+          </h3>
+          <ul className="text-ink-200 space-y-2">
+            <li>
+              <span className="text-gold font-semibold">1.</span> Upload a clear
+              photo of the skin area where you want the tattoo
+            </li>
+            <li>
+              <span className="text-gold font-semibold">2.</span> Upload your
+              tattoo design (preferably with a transparent background)
+            </li>
+            <li>
+              <span className="text-gold font-semibold">3.</span> Adjust scale,
+              horizontal, and vertical position to see the final look
+            </li>
+            <li>
+              <span className="text-gold font-semibold">4.</span> Download the
+              preview to share with your artist
+            </li>
+          </ul>
         </div>
       </div>
-    </section>
+    </div>
   );
-}
+};
